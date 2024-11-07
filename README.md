@@ -1,4 +1,6 @@
-# Knowledge distillation from Leela Chess Zero (captureTheQueen model)
+# Chess Engine
+
+## Knowledge distillation from Leela Chess Zero (captureTheQueen model)
 
 ## Explanation
 
