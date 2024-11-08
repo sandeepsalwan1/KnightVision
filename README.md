@@ -1,4 +1,5 @@
-# Chess Engine
+# Chess Engine 
+## I am expanding from scratch with neural networks. WIP stay tuned
 
 ## Knowledge distillation from Leela Chess Zero (captureTheQueen model)
 
