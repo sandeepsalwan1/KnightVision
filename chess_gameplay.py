@@ -7,16 +7,19 @@ import chess
 import chess.svg
 from chess import Board
 from chess.engine import SimpleEngine, Limit
-import cairosvg
+"""Gameplay harness for agents.
+
+Rendering dependencies are imported lazily to keep headless usage light.
+"""
 import time
 import os
-import matplotlib.pyplot as plt
-from PIL import Image
-from io import BytesIO
 import math
 
 WHEREAMI = os.path.dirname(__file__)
-STOCKFISH_PATH = os.path.join(WHEREAMI, 'utils', 'stockfish')
+try:
+    from utils.constants import STOCKFISH_PATH  # Prefer dynamic detection
+except Exception:
+    STOCKFISH_PATH = os.path.join(WHEREAMI, 'utils', 'stockfish')
 
 def softmax_temp(x, temp=1):
     z = np.exp((x - x.max()) / temp)
@@ -88,11 +91,15 @@ class Agent:
         if self.model is None:
             return choice(legal_moves)
 
-        scores = []
-        with torch.no_grad():
-            for move in legal_moves:
-                score = self.model.score(pgn, move)
-                scores.append(score)
+        # Try vectorized scoring if available
+        if hasattr(self.model, 'score_moves'):
+            scores = self.model.score_moves(pgn, legal_moves)
+        else:
+            scores = []
+            with torch.no_grad():
+                for move in legal_moves:
+                    score = self.model.score(pgn, move)
+                    scores.append(score)
 
         # Index of selected move
         selection = selector(np.array(scores), self.p, self.k)
@@ -195,6 +202,13 @@ def play_game(agents, teams, max_moves=float('inf'), min_seconds_per_move=2, ver
             time.sleep(time_remaining)
 
 def render_game_board(board, teams, white_score, last_move=None, winner=None, out_path=None):
+    try:
+        import cairosvg
+        import matplotlib.pyplot as plt
+        from PIL import Image
+        from io import BytesIO
+    except Exception as exc:
+        raise RuntimeError("Rendering requires cairosvg, matplotlib, and Pillow. Install requirements or skip rendering.") from exc
 
     team_white = teams["white"]
     team_black = teams["black"]

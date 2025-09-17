@@ -1,3 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data/weights
+checkpoint.pt
+*.h5
+*.pack
+*.tar.bz2
+Data/
+
+# Editor/OS
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Artifacts
+*.png
+*.svg
+*.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

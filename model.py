@@ -167,14 +167,50 @@ class Model(nn.Module):
         # init a game and board
         game = chess.pgn.read_game(io.StringIO(pgn))
         board = Board()
-        # catch board up on game to present
-        for past_move in list(game.mainline_moves()):
-            board.push(past_move)
+        if game is not None:
+            for past_move in list(game.mainline_moves()):
+                board.push(past_move)
         # push the move to score
-        board.push_san(move)
+        try:
+            board.push_san(move)
+        except Exception:
+            # Illegal or unparsable move => very bad score
+            return float('-1e9')
         # convert to tensor, unsqueezing a dummy batch dimension
         board_tensor = torch.tensor(encode_board(board)).unsqueeze(0)
         return self.forward(board_tensor).item()
+
+    def evaluate_board(self, board: Board) -> float:
+        '''
+        Evaluate a chess.Board directly from the perspective of the side to move.
+        Returns a scalar float (higher is better for side to move).
+        '''
+        with torch.no_grad():
+            board_tensor = torch.tensor(encode_board(board)).unsqueeze(0)
+            return float(self.forward(board_tensor).item())
+
+    def score_moves(self, pgn, legal_move_sans):
+        '''
+        Vectorized scoring for a list of SAN moves from a PGN position.
+        Returns a Python list of floats corresponding to the scores.
+        '''
+        game = chess.pgn.read_game(io.StringIO(pgn))
+        board = Board()
+        if game is not None:
+            for past_move in list(game.mainline_moves()):
+                board.push(past_move)
+        boards = []
+        for san in legal_move_sans:
+            try:
+                tmp = board.copy()
+                tmp.push_san(san)
+                boards.append(encode_board(tmp))
+            except Exception:
+                boards.append(encode_board(board))
+        with torch.no_grad():
+            tensor = torch.tensor(boards)
+            scores = self.forward(tensor).detach().cpu().numpy().tolist()
+        return [float(s) for s in scores]
 
 
 ## -- Positional Encoding Strategies -- ##
@@ -192,7 +228,13 @@ class PositionalEncoding(nn.Module):
         self.register_parameter('pe', nn.Parameter(pe, requires_grad=False))
 
     def forward(self, x):
-        x = x + self.pe[:x.size(0), :]
+        # x: (batch, seq_len, embed_dim)
+        # pe: (max_len, embed_dim) stored as (max_len, embed_dim) but registered as (max_len, embed_dim) unsqueezed in dim 0 then transposed
+        # Align to batch-first inputs by indexing on seq_len and broadcasting over batch
+        seq_len = x.size(1)
+        # self.pe was stored as (max_len, 1, embed_dim); transpose to (1, seq_len, embed_dim)
+        pe = self.pe[:seq_len].transpose(0, 1)
+        x = x + pe
         return self.dropout(x)
 
 class RotaryPositionalEmbeddings(nn.Module):

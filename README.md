@@ -1,5 +1,6 @@
-# Chess Engine With Neural Networks (1300 ELO)
-## I am expanding from scratch with neural networks. WIP stay tuned
+# Chess Engine with Neural Networks and Search
+
+Modernized, testable chess engine repo combining a learnable board evaluator with a classic alpha-beta searcher and a clean gameplay harness.
 
 ## Knowledge distillation from Leela Chess Zero (captureTheQueen model)
 
@@ -32,19 +33,40 @@ The model itself is implemented in
 * py_layers.py
 * pt_losses.py
 
-## Playing
+## Quick Start (Inference & Play)
 
-Training can be done without understanding chess, but in order to apply the trained model two things need to be done:
-* The policy output tensor needs to be mapped to moves (see policy_index.py and lc0_az_policy_map.py)
-* The chess board state needs to be converted into LC0's planes format.
+1. Create and activate a virtual environment, then install deps:
 
-./captureTheQueen/model.py has the model collected into a single file that can play in the tournament (and ./captureTheQueen/model_config.yaml).
+```
+python3 -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+2. Validate your submission interface quickly:
+
+```
+python pre_submission_val.py
+```
+
+3. Play a demo self-play game (model vs model, no rendering):
+
+```
+python play.py --white model --black model --max-moves 40
+```
+
+Options:
+- `--white/--black`: one of `random`, `model`, `search`, `search+model` (search guided by the model evaluator)
+- `--render /path/to/out.png`: save a nice board image after each move (requires cairosvg, matplotlib, Pillow)
+- `--depth`: search depth for search-based agents
+
+Stockfish is not used for playing the model. It is only used if you explicitly choose a search-based agent, or for optional position evaluation in the visuals. To override its path, set `STOCKFISH_PATH` environment variable.
 
 
 
 
 
-# Original hackathon documentation
+## Original hackathon documentation
 
 
 
