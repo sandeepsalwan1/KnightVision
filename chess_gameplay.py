@@ -82,14 +82,20 @@ class Agent:
     def __init__(self, model=None, p=0.3, k=3):
         self.model, self.p, self.k = model, p, k
 
-        if self.model:
-            assert isinstance(model, nn.Module), "ERROR: model must be a torch nn.Module"
-            self.model.eval()
+        if self.model and hasattr(self.model, "eval"):
+            try:
+                self.model.eval()
+            except Exception:
+                pass
 
     def select_move(self, pgn, legal_moves):
         # If there is no model passed, then just chose randomly.
         if self.model is None:
             return choice(legal_moves)
+
+        # If the model provides a full move-selection API, delegate to it
+        if hasattr(self.model, "select_move"):
+            return self.model.select_move(pgn, legal_moves)
 
         # Try vectorized scoring if available
         if hasattr(self.model, 'score_moves'):

@@ -317,3 +317,10 @@ class RotaryPositionalEmbeddings(nn.Module):
         # tensor has shape [b, s, n_h, h_d]
         x_out = x_out.flatten(3)
         return x_out.type_as(x)
+
+# Prefer the captureTheQueen architecture at runtime to match root config/checkpoint
+try:
+    from importlib import import_module as _im
+    Model = _im('captureTheQueen.model').Model  # type: ignore
+except Exception:
+    pass

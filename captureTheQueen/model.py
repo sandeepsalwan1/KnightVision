@@ -417,6 +417,69 @@ class Model(nn.Module):
 
         return result
 
+    def score_moves(self, pgn, legal_move_sans, policy_weight=0.8):
+        """
+        Vectorized scoring for a list of SAN moves from a PGN position.
+        Returns a Python list of floats corresponding to the scores.
+        """
+        # Ensure current board policy cache is populated for this PGN
+        if pgn != self.pgn:
+            with torch.no_grad():
+                self.pgn = pgn
+                game = chess.pgn.read_game(io.StringIO(pgn))
+                self.board = chess.Board()
+                for past_move in list(game.mainline_moves()):
+                    self.board.push(past_move)
+                tensor_input = torch.from_numpy(
+                    board_to_leela_input(self.board).astype("float32")
+                )
+                policy_output, _q = self.forward(tensor_input)
+                policy = policy_output.detach().numpy().flatten()
+                self.policy = leela_policy_to_uci_moves(policy, flip=(self.board.turn == chess.BLACK))
+
+        # Policy based score for each move (no board push needed)
+        uci_moves = []
+        policy_scores = []
+        for san in legal_move_sans:
+            try:
+                uci = self.board.parse_san(san).uci()
+            except Exception:
+                uci = None
+            uci_moves.append(uci)
+            policy_scores.append(float(self.policy.get(uci, -1.0)) if uci is not None else -1.0)
+
+        # Q-based score requires evaluating successor boards; batch for speed
+        successor_inputs = []
+        tmp_board = self.board
+        for san in legal_move_sans:
+            try:
+                b = tmp_board.copy()
+                b.push_san(san)
+                successor_inputs.append(board_to_leela_input(b).astype("float32"))
+            except Exception:
+                # Illegal or unparsable move => very bad score
+                successor_inputs.append(board_to_leela_input(tmp_board).astype("float32"))
+
+        with torch.no_grad():
+            batch_tensor = torch.from_numpy(np.stack(successor_inputs, axis=0))
+            _policy_out, q = self.forward(batch_tensor)
+            q_np = q.detach().numpy()
+            q_scores = (q_np[:, 0] - q_np[:, 2]).astype(np.float32)
+
+        scores = policy_weight * np.array(policy_scores, dtype=np.float32) + (1 - policy_weight) * q_scores
+        return [float(s) for s in scores.tolist()]
+
+    def evaluate_board(self, board: chess.Board) -> float:
+        """
+        Evaluate a chess.Board directly from the perspective of the side to move.
+        Returns a scalar float (higher is better for side to move).
+        """
+        with torch.no_grad():
+            tensor_input = torch.from_numpy(board_to_leela_input(board).astype("float32"))
+            _policy_out, q = self.forward(tensor_input)
+            q_np = q.detach().numpy().flatten()
+            return float(q_np[0] - q_np[2])
+
 
     def prev_score(self, pgn, move, strategy="policy"):
         '''

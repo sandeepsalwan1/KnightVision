@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KnightVision - Play</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #111; color: #eee; }
+    .wrap { display: grid; grid-template-columns: 720px 1fr; gap: 24px; align-items: start; }
+    .board { background: #222; border-radius: 8px; overflow: hidden; }
+    .panel { background: #1a1a1a; padding: 16px; border-radius: 8px; }
+    button { background: #3a86ff; color: white; border: 0; border-radius: 6px; padding: 10px 14px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    input, select { background: #222; color: #eee; border: 1px solid #333; padding: 8px; border-radius: 6px; }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .moves { max-height: 560px; overflow: auto; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+    .status { margin-top: 8px; color: #ccc; }
+    .svg { width: 720px; height: 720px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>KnightVision</h1>
+  <div class="wrap">
+    <div class="board">
+      <img id="board" class="svg" alt="board" />
+    </div>
+    <div class="panel">
+      <div class="row">
+        <label>Play as</label>
+        <select id="color">
+          <option value="white">White</option>
+          <option value="black">Black</option>
+        </select>
+        <button id="new">New Game</button>
+      </div>
+      <div class="row">
+        <input id="move" placeholder="Enter SAN e.g. e4, Nf3, exd5, Qh5+" />
+        <button id="play" disabled>Play Move</button>
+      </div>
+      <div class="status" id="status">Create a new game to start.</div>
+      <h3>Legal moves</h3>
+      <div id="legal" class="moves"></div>
+      <h3>PGN</h3>
+      <div id="pgn" class="moves"></div>
+    </div>
+  </div>
+
+  <script>
+    const boardEl = document.getElementById('board');
+    const newBtn = document.getElementById('new');
+    const playBtn = document.getElementById('play');
+    const moveInput = document.getElementById('move');
+    const colorSel = document.getElementById('color');
+    const statusEl = document.getElementById('status');
+    const legalEl = document.getElementById('legal');
+    const pgnEl = document.getElementById('pgn');
+
+    let gameId = null;
+
+    function setBoardSrc() {
+      if (!gameId) return;
+      boardEl.src = `/api/board.svg?game_id=${encodeURIComponent(gameId)}&t=${Date.now()}`;
+    }
+
+    async function refreshState() {
+      if (!gameId) return;
+      const res = await fetch(`/api/state?game_id=${encodeURIComponent(gameId)}`);
+      const data = await res.json();
+      setBoardSrc();
+
+      statusEl.textContent = data.is_game_over ? `Game over (${data.outcome || 'result unknown'})` : `Turn: ${data.turn}`;
+      legalEl.textContent = data.legal_moves.join(', ');
+      pgnEl.textContent = data.pgn || '';
+      playBtn.disabled = data.is_game_over;
+    }
+
+    newBtn.addEventListener('click', async () => {
+      const res = await fetch('/api/new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ human_color: colorSel.value })
+      });
+      const data = await res.json();
+      gameId = data.game_id;
+      moveInput.value = '';
+      playBtn.disabled = false;
+      await refreshState();
+    });
+
+    playBtn.addEventListener('click', async () => {
+      if (!gameId) return;
+      const san = moveInput.value.trim();
+      if (!san) return;
+      playBtn.disabled = true;
+      const res = await fetch('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gameId, move_san: san })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Error' }));
+        alert(err.detail || 'Move failed');
+      }
+      await refreshState();
+      moveInput.value = '';
+      playBtn.disabled = false;
+    });
+
+    // Polling to show AI reply updates quickly
+    setInterval(refreshState, 1200);
+  </script>
+</body>
+ </html>
+
+

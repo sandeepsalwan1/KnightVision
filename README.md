@@ -60,6 +60,28 @@ Options:
 - `--render /path/to/out.png`: save a nice board image after each move (requires cairosvg, matplotlib, Pillow)
 - `--depth`: search depth for search-based agents
 
+### Rating (Elo) Evaluation
+
+You can estimate the model's Elo relative to a baseline by running head-to-head matches and converting the average score to an Elo difference.
+
+Examples:
+
+```
+# Model vs Alpha-Beta material search (depth 3)
+python elo_eval.py --agent-a model --agent-b search --games 20 --depth 3 --time 0.5
+
+# Model guided search vs Stockfish (time-limited); requires Stockfish available
+python elo_eval.py --agent-a model+search --agent-b stockfish --games 20 --time 0.2
+
+# If you have a known rating for the baseline, estimate absolute Elo for the model
+python elo_eval.py --agent-a model --agent-b search --games 40 --depth 3 --baseline-rating 2000
+```
+
+Notes:
+- The script alternates colors every game for fairness.
+- It reports Elo(A−B) = 400*log10(score/(1−score)) with a 95% CI.
+- To use Stockfish, ensure the binary is on PATH or set `STOCKFISH_PATH`.
+
 Stockfish is not used for playing the model. It is only used if you explicitly choose a search-based agent, or for optional position evaluation in the visuals. To override its path, set `STOCKFISH_PATH` environment variable.
 
 
