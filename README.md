@@ -49,10 +49,10 @@ pip install -r requirements.txt
 python pre_submission_val.py
 ```
 
-3. Play a demo self-play game (no rendering):
+3. Play a demo self-play game (model vs model, no rendering):
 
 ```
-python play.py --white model --black search --max-moves 40
+python play.py --white model --black model --max-moves 40
 ```
 
 Options:
@@ -60,7 +60,7 @@ Options:
 - `--render /path/to/out.png`: save a nice board image after each move (requires cairosvg, matplotlib, Pillow)
 - `--depth`: search depth for search-based agents
 
-Stockfish detection is automatic. To override, set `STOCKFISH_PATH` environment variable.
+Stockfish is not used for playing the model. It is only used if you explicitly choose a search-based agent, or for optional position evaluation in the visuals. To override its path, set `STOCKFISH_PATH` environment variable.
 
 
 

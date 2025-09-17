@@ -43,7 +43,7 @@ def make_agent(kind: str, model: Model, depth: int, time_sec: float) -> Agent:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play a quick chess game between agents.")
     parser.add_argument('--white', default='model', help='random | model | search | search+model')
-    parser.add_argument('--black', default='search', help='random | model | search | search+model')
+    parser.add_argument('--black', default='model', help='random | model | search | search+model')
     parser.add_argument('--max-moves', type=int, default=40)
     parser.add_argument('--depth', type=int, default=3)
     parser.add_argument('--time', type=float, default=1.0, help='Time limit per search in seconds')
